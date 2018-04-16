@@ -1,0 +1,5 @@
+rootProject.name = 'HonywellTest'
+include ':react-native-honnywell'
+project(':react-native-honnywell').projectDir = new File(rootProject.projectDir, '../../android')
+
+include ':app'
