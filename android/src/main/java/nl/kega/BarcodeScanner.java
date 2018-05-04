@@ -32,6 +32,9 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
     private BarcodeReader barcodeReader;
     private AidcManager manager;
 
+    private boolean claimed = false;
+    private boolean destroyed = false;
+
     public BarcodeScanner(ReactApplicationContext context) {
         super(context);
 
@@ -40,6 +43,11 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
 
         Log.e("Scanner", "BarcodeScanner");
 
+        initManager();
+
+    }
+
+    private void initManager() {
         AidcManager.create(context, new CreatedCallback() {
 
             @Override
@@ -50,7 +58,6 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
                 initScanner();
             }
         });
-
     }
 
     private void initScanner() {
@@ -102,11 +109,6 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
     @Override
     public void onBarcodeEvent(final BarcodeReadEvent event) {
         Log.e("Scanner", "onBarcodeEvent ");
-        Log.e("Scanner", "Barcode data: " + event.getBarcodeData());
-        Log.e("Scanner", "Character Set: " + event.getCharset());
-        Log.e("Scanner", "Code ID: " + event.getCodeId());
-        Log.e("Scanner", "AIM ID: " + event.getAimId());
-        Log.e("Scanner", "Timestamp: " + event.getTimestamp());
 
         WritableMap barcode_event = Arguments.createMap();
         barcode_event.putString("name", "BarcodeEvent");
@@ -164,7 +166,14 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
 
     @Override
     public void onHostResume() {
-        if (barcodeReader != null) {
+
+        // When backbtton is pressed and app goes to back onHostDestroy gets called
+        if (destroyed) {
+            initManager();
+            destroyed = false;
+        }
+
+        if (barcodeReader != null && claimed) {
             try {
                 Log.e("Scanner", "claim");
                 barcodeReader.claim();
@@ -173,35 +182,51 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
             }
         }
     }
+
     @Override
     public void onHostPause() {
         if (barcodeReader != null) {
-            Log.e("Scanner", "release");
-            barcodeReader.release();
+            try {
+                Log.e("Scanner", "release");
+                barcodeReader.release();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     @Override
     public void onHostDestroy() {
+
+        destroyed = true;
+
         if (barcodeReader != null) {
             Log.e("Scanner", "onHostDestroy");
             barcodeReader.removeBarcodeListener(this);
             barcodeReader.removeTriggerListener(this);
             barcodeReader.close();
+            barcodeReader = null;
+            claimed = false;
         }
 
         if (manager != null) {
             manager.close();
+            manager = null;
         }
     }
 
     @Override
     public void onCatalystInstanceDestroy() {
         if (barcodeReader != null) {
-            Log.e("Scanner", "onCatalystInstanceDestroy");
-            barcodeReader.removeBarcodeListener(this);
-            barcodeReader.removeTriggerListener(this);
-            barcodeReader.close();
+            
+            try {
+                Log.e("Scanner", "onCatalystInstanceDestroy");
+                barcodeReader.removeBarcodeListener(this);
+                barcodeReader.removeTriggerListener(this);
+                barcodeReader.close();
+            } catch (IllegalStateException e) {
+        
+            }
         }
 
         if (manager != null) {
@@ -209,7 +234,7 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
         }
 
     }
-    
+
     @ReactMethod
     public void setBarcodes(ReadableMap barcodes) {
 
@@ -269,6 +294,34 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
             barcodeReader.softwareTrigger(state);
         } catch (Exception e) {
     
+        }
+    }
+
+    @ReactMethod
+    public void claim() {
+        if (barcodeReader != null) {
+            try {
+                Log.e("Scanner", "claim");
+                barcodeReader.claim();
+                claimed = true;
+            } catch (ScannerUnavailableException e) {
+                e.printStackTrace();
+            } catch (IllegalStateException e) {
+        
+            }
+        }
+    }
+
+    @ReactMethod
+    public void release() {
+        if (barcodeReader != null) {
+            try {
+                Log.e("Scanner", "release");
+                barcodeReader.release();
+                claimed = false;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
