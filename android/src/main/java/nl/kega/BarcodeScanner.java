@@ -251,6 +251,7 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
   
         }
     }
+
     @ReactMethod
     public void getProperties(Callback callback) {
         try {
@@ -261,5 +262,16 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
   
         }
     }
+
+    @ReactMethod
+    public void softwareTrigger(boolean state) {
+        try {
+            barcodeReader.softwareTrigger(state);
+        } catch (Exception e) {
+    
+        }
+    }
+
+    
 
 }
