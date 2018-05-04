@@ -34,6 +34,7 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
 
     private boolean claimed = false;
     private boolean destroyed = false;
+    private boolean softtrigger = false;
 
     public BarcodeScanner(ReactApplicationContext context) {
         super(context);
@@ -74,6 +75,7 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
             } catch (UnsupportedPropertyException e) {
   
             }
+            
             // register trigger state change listener
             barcodeReader.addTriggerListener(this);
 
@@ -134,24 +136,28 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
         barcode_event.putArray("bounds", bounds);
 
         this.context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("BarcodeEvent", barcode_event);
+
     }
 
     @Override
     public void onTriggerEvent(TriggerStateChangeEvent event) {
-        Log.e("Scanner", "onTriggerEvent");
+        Log.e("Scanner", "onTriggerEvent " + softtrigger);
 
         WritableMap trigger_event = Arguments.createMap();
         trigger_event.putString("name", "TriggerEvent");
 
         this.context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("TriggerEvent", trigger_event);
+        
+        Log.e("Scanner", "event.getState() " + event.getState());
 
         try {
+            
             // only handle trigger presses
             // turn on/off aimer, illumination and decoding
             barcodeReader.aim(event.getState());
             barcodeReader.light(event.getState());
             barcodeReader.decode(event.getState());
-
+       
         } catch (ScannerNotClaimedException e) {
             e.printStackTrace();
         } catch (ScannerUnavailableException e) {
@@ -167,7 +173,7 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
     @Override
     public void onHostResume() {
 
-        // When backbtton is pressed and app goes to back onHostDestroy gets called
+        // When backbutton is pressed and app goes to back onHostDestroy gets called
         if (destroyed) {
             initManager();
             destroyed = false;
@@ -291,7 +297,23 @@ public class BarcodeScanner extends ReactContextBaseJavaModule implements Barcod
     @ReactMethod
     public void softwareTrigger(boolean state) {
         try {
+            softtrigger = state;
             barcodeReader.softwareTrigger(state);
+        } catch (Exception e) {
+    
+        }
+    }
+
+    @ReactMethod
+    public void scanContinuous(boolean state) {
+        try {
+            if (state) {
+                barcodeReader.setProperty(BarcodeReader.PROPERTY_TRIGGER_SCAN_MODE, BarcodeReader.TRIGGER_SCAN_MODE_CONTINUOUS);
+            } else {
+                barcodeReader.setProperty(BarcodeReader.PROPERTY_TRIGGER_SCAN_MODE, BarcodeReader.TRIGGER_SCAN_MODE_ONESHOT);
+            }
+            barcodeReader.softwareTrigger(state);
+
         } catch (Exception e) {
     
         }
